@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuthHook } from '../hooks/useAuth'
+import { sendPasswordResetEmail } from 'firebase/auth'
+import { auth } from '../services/firebase'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -12,6 +14,10 @@ export default function Login() {
   })
   const [loading, setLoading] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -67,6 +73,36 @@ export default function Login() {
 
   const displayError = error || localError
 
+  const handlePasswordReset = async () => {
+    if (!resetEmail.trim()) {
+      setResetMessage({ type: 'error', text: 'Please enter your email address' })
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) {
+      setResetMessage({ type: 'error', text: 'Please enter a valid email address' })
+      return
+    }
+
+    setResetLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, resetEmail)
+      setResetMessage({ type: 'success', text: 'Password reset email sent. Please check your inbox.' })
+      setTimeout(() => {
+        setShowPasswordReset(false)
+        setResetEmail('')
+        setResetMessage(null)
+      }, 3000)
+    } catch (err: any) {
+      const errorMessage = err?.code === 'auth/user-not-found'
+        ? 'No account found with this email'
+        : 'Failed to send reset email. Please try again.'
+      setResetMessage({ type: 'error', text: errorMessage })
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
@@ -108,9 +144,18 @@ export default function Login() {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-300">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordReset(true)}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input
                 id="password"
                 type="password"
@@ -180,6 +225,70 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {showPasswordReset && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50">
+          <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 w-full max-w-sm">
+            <h2 className="text-2xl font-bold text-white mb-4">Reset Password</h2>
+
+            {resetMessage && (
+              <div
+                className={`mb-4 p-3 rounded-lg text-sm ${
+                  resetMessage.type === 'success'
+                    ? 'bg-green-500/10 border border-green-500/50 text-green-200'
+                    : 'bg-red-500/10 border border-red-500/50 text-red-200'
+                }`}
+              >
+                {resetMessage.text}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="resetEmail" className="block text-sm font-medium text-slate-300 mb-2">
+                  Email Address
+                </label>
+                <input
+                  id="resetEmail"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => {
+                    setResetEmail(e.target.value)
+                    setResetMessage(null)
+                  }}
+                  placeholder="you@example.com"
+                  disabled={resetLoading}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={resetLoading}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-700 disabled:opacity-50 rounded-lg font-semibold transition"
+                >
+                  {resetLoading ? 'Sending...' : 'Send Reset Email'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordReset(false)
+                    setResetEmail('')
+                    setResetMessage(null)
+                  }}
+                  disabled={resetLoading}
+                  className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded-lg font-semibold transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

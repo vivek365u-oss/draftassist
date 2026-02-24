@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatPrice } from '../utils/formatPrice'
 import type { Assignment } from '../types'
 
 interface BidModalProps {
@@ -65,7 +66,7 @@ export default function BidModal({ assignment,  onClose, onSubmit, loading }: Bi
               disabled={loading}
               className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
             />
-            <p className="text-xs text-slate-500 mt-1">Budget: ${assignment.budget}</p>
+            <p className="text-xs text-slate-500 mt-1">Budget: {formatPrice(assignment.budget)}</p>
           </div>
 
           <div>

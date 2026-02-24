@@ -35,6 +35,10 @@ export interface Assignment {
   studentId: string
   studentName: string
   selectedExpertId?: string
+  pdfUrl?: string
+  submissionUrl?: string
+  completedAt?: Date
+  ratingGiven?: boolean
   createdAt: Date
 }
 
@@ -45,5 +49,15 @@ export interface Proposal {
   expertName: string
   bidAmount: number
   message: string
+  createdAt: Date
+}
+
+export interface Review {
+  id: string
+  assignmentId: string
+  studentId: string
+  expertId: string
+  rating: number
+  comment?: string
   createdAt: Date
 }

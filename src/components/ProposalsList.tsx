@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import ProposalService from '../services/proposalService'
+import { formatPrice } from '../utils/formatPrice'
 import type { Proposal, Assignment } from '../types'
 
 interface ProposalsListProps {
@@ -83,7 +84,7 @@ export default function ProposalsList({ assignment,  onAccept, loading }: Propos
               <p className="text-xs text-slate-500">{formatDate(proposal.createdAt)}</p>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold text-blue-400">${proposal.bidAmount}</div>
+              <div className="text-lg font-bold text-blue-400">{formatPrice(proposal.bidAmount)}</div>
             </div>
           </div>
 

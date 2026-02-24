@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthHook } from '../hooks/useAuth'
 import AssignmentService from '../services/assignmentService'
 import ProposalService from '../services/proposalService'
+import ReviewService from '../services/reviewService'
 import ProposalsList from '../components/ProposalsList'
+import { formatPrice } from '../utils/formatPrice'
 import type { Assignment, Proposal } from '../types'
 
 export default function MyAssignments() {
@@ -15,6 +17,10 @@ export default function MyAssignments() {
   const [error, setError] = useState<string | null>(null)
   const [expandedAssignment, setExpandedAssignment] = useState<string | null>(null)
   const [acceptingBid, setAcceptingBid] = useState(false)
+  const [ratingModal, setRatingModal] = useState<string | null>(null)
+  const [ratingStars, setRatingStars] = useState<Record<string, number>>({})
+  const [ratingComments, setRatingComments] = useState<Record<string, string>>({})
+  const [submittingRating, setSubmittingRating] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!user) return
@@ -79,6 +85,46 @@ export default function MyAssignments() {
       )
     } finally {
       setAcceptingBid(false)
+    }
+  }
+
+  const handleSubmitRating = async (assignmentId: string) => {
+    const assignment = assignments.find((a) => a.id === assignmentId)
+    if (!assignment || !assignment.selectedExpertId || !user) return
+
+    const rating = ratingStars[assignmentId]
+    if (!rating) {
+      setError('Please select a rating')
+      return
+    }
+
+    setSubmittingRating((prev) => ({ ...prev, [assignmentId]: true }))
+    try {
+      const comment = ratingComments[assignmentId] || undefined
+      await ReviewService.createReview(
+        assignmentId,
+        user.uid,
+        assignment.selectedExpertId,
+        rating,
+        comment
+      )
+      await AssignmentService.markRatingAsGiven(assignmentId)
+      setRatingModal(null)
+      setRatingStars((prev) => {
+        const updated = { ...prev }
+        delete updated[assignmentId]
+        return updated
+      })
+      setRatingComments((prev) => {
+        const updated = { ...prev }
+        delete updated[assignmentId]
+        return updated
+      })
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit rating')
+    } finally {
+      setSubmittingRating((prev) => ({ ...prev, [assignmentId]: false }))
     }
   }
 
@@ -158,7 +204,7 @@ export default function MyAssignments() {
                     </div>
                   </div>
                   <div className="text-right ml-4">
-                    <div className="text-2xl font-bold text-blue-400 mb-2">${assignment.budget}</div>
+                    <div className="text-2xl font-bold text-blue-400 mb-2">{formatPrice(assignment.budget)}</div>
                   </div>
                 </div>
 
@@ -188,6 +234,66 @@ export default function MyAssignments() {
                     </button>
                   </div>
                 </div>
+
+                {assignment.status === 'completed' && !assignment.ratingGiven && (
+                  <div className="mt-6 pt-6 border-t border-slate-700 bg-green-500/5 p-4 rounded-lg">
+                    <p className="text-sm font-semibold mb-3 text-green-300">✓ Assignment completed! Rate the expert:</p>
+                    {ratingModal === assignment.id ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-2">Rating (1-5 stars)</label>
+                          <div className="flex gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                onClick={() => setRatingStars((prev) => ({ ...prev, [assignment.id]: star }))}
+                                className={`text-2xl transition ${
+                                  (ratingStars[assignment.id] || 0) >= star ? 'text-yellow-400' : 'text-slate-600'
+                                }`}
+                              >
+                                ★
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-2">Comment (optional)</label>
+                          <textarea
+                            value={ratingComments[assignment.id] || ''}
+                            onChange={(e) =>
+                              setRatingComments((prev) => ({ ...prev, [assignment.id]: e.target.value }))
+                            }
+                            placeholder="Share your experience with this expert..."
+                            className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition text-sm"
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSubmitRating(assignment.id)}
+                            disabled={submittingRating[assignment.id] || !ratingStars[assignment.id]}
+                            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg font-semibold transition text-white text-sm"
+                          >
+                            {submittingRating[assignment.id] ? 'Submitting...' : 'Submit Rating'}
+                          </button>
+                          <button
+                            onClick={() => setRatingModal(null)}
+                            className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold transition text-white text-sm"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setRatingModal(assignment.id)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition text-white text-sm"
+                      >
+                        Rate Expert
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {expandedAssignment === assignment.id && (
                   <div className="mt-6 pt-6 border-t border-slate-700">
