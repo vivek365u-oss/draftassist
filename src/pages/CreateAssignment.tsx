@@ -9,8 +9,6 @@ export default function CreateAssignment() {
   const { user } = useAuthHook()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
-  const [pdfError, setPdfError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -30,7 +28,6 @@ export default function CreateAssignment() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
-    setPdfError(null)
     setLoading(true)
 
     try {
@@ -61,45 +58,15 @@ export default function CreateAssignment() {
         status: 'open' as AssignmentStatus,
         studentId: user.uid,
         studentName: user.displayName,
-        file: pdfFile ?? undefined,
       })
 
       navigate('/my-assignments')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create assignment'
-      // show file-specific errors first
-      if (errorMessage.toLowerCase().includes('pdf')) {
-        setPdfError(errorMessage)
-      } else {
-        setError(errorMessage)
-      }
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPdfError(null)
-    const f = e.target.files && e.target.files[0]
-    if (!f) {
-      setPdfFile(null)
-      return
-    }
-
-    if (f.type !== 'application/pdf') {
-      setPdfFile(null)
-      setPdfError('Only PDF files are allowed')
-      return
-    }
-
-    const maxSize = 5 * 1024 * 1024
-    if (f.size > maxSize) {
-      setPdfFile(null)
-      setPdfError('File exceeds maximum size of 5MB')
-      return
-    }
-
-    setPdfFile(f)
   }
 
   return (
@@ -210,22 +177,7 @@ export default function CreateAssignment() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-slate-200">Upload PDF (optional)</label>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={handleFileChange}
-                className="w-full text-sm text-slate-200"
-                disabled={loading}
-              />
-              {pdfFile && (
-                <p className="text-sm text-slate-300 mt-2">Selected: {pdfFile.name}</p>
-              )}
-              {pdfError && (
-                <p className="text-sm text-red-400 mt-2">{pdfError}</p>
-              )}
-            </div>
+            {/* PDF upload temporarily disabled */}
 
             <div className="flex gap-4 pt-4">
               <button

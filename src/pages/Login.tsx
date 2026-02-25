@@ -74,19 +74,26 @@ export default function Login() {
   const displayError = error || localError
 
   const handlePasswordReset = async () => {
+    // Basic validation
     if (!resetEmail.trim()) {
       setResetMessage({ type: 'error', text: 'Please enter your email address' })
+      console.warn('Password reset attempted with empty email')
       return
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) {
       setResetMessage({ type: 'error', text: 'Please enter a valid email address' })
+      console.warn('Password reset attempted with invalid email:', resetEmail)
       return
     }
 
+    // Attempt reset and log for debugging
     setResetLoading(true)
+    console.info('Attempting to send password reset email for:', resetEmail)
+
     try {
       await sendPasswordResetEmail(auth, resetEmail)
+      console.info('Password reset email sent for:', resetEmail)
       setResetMessage({ type: 'success', text: 'Password reset email sent. Please check your inbox.' })
       setTimeout(() => {
         setShowPasswordReset(false)
@@ -94,10 +101,35 @@ export default function Login() {
         setResetMessage(null)
       }, 3000)
     } catch (err: any) {
-      const errorMessage = err?.code === 'auth/user-not-found'
-        ? 'No account found with this email'
-        : 'Failed to send reset email. Please try again.'
-      setResetMessage({ type: 'error', text: errorMessage })
+      console.error('sendPasswordResetEmail error:', err)
+
+      // Map common Firebase auth errors to friendly messages
+      let friendly = 'Failed to send reset email. Please try again.'
+      const code = err?.code || ''
+      switch (code) {
+        case 'auth/user-not-found':
+          friendly = 'User not found'
+          break
+        case 'auth/invalid-email':
+          friendly = 'Invalid email'
+          break
+        case 'auth/missing-email':
+          friendly = 'Please provide an email address'
+          break
+        case 'auth/too-many-requests':
+          friendly = 'Too many requests. Please try again later.'
+          break
+        case 'auth/network-request-failed':
+          friendly = 'Network error. Check your connection and try again.'
+          break
+        default:
+          // Try to extract helpful message
+          if (err?.message) {
+            friendly = String(err.message)
+          }
+      }
+
+      setResetMessage({ type: 'error', text: friendly })
     } finally {
       setResetLoading(false)
     }

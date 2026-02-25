@@ -5,6 +5,8 @@ import {
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserSessionPersistence,
   type User,
 } from 'firebase/auth'
 import {
@@ -60,6 +62,8 @@ class AuthService {
    */
   async logIn(email: string, password: string): Promise<UserProfile> {
     try {
+      // Use session persistence so the user is signed out when the browser is closed.
+      await setPersistence(auth, browserSessionPersistence)
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const userProfile = await this.getUserProfile(userCredential.user.uid)
 
